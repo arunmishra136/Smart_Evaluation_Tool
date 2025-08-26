@@ -14,8 +14,8 @@ automatically grades them, and provides **detailed feedback + a downloadable rep
 
 We’ve included **sample PDFs** for quick testing: (Download and upload them)
 
-- [`/samples/quest.pdf`](./samples/question.pdf) → Example **question paper**  
-- [`/samples/ans.pdf`](./samples/answer.pdf) → Example handwritten **answer sheet**  
+- [`/samples/quest.pdf`](./samples/quest.pdf) → Example **question paper**  
+- [`/samples/ans.pdf`](./samples/ans.pdf) → Example handwritten **answer sheet**  
 
 
 ## ✨ Features
