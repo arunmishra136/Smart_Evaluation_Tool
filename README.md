@@ -36,18 +36,17 @@ We’ve included **sample PDFs** for quick testing: (Download and upload them)
 - 🌐 **REST API** for programmatic evaluation  
 - 💻 **Clean, responsive React frontend** with real-time updates  
 
-### 🛠️ How to Test
+### 🛠 How to Test
 1. Start the frontend (`npm run dev`) and backend (`uvicorn main:app --reload`).  
 2. Upload the provided **`question.pdf`** and **`answer.pdf`**.  
 3. Click **Evaluate** → get instant grading + feedback.  
 4. Download the generated **Report Card (PDF)**.
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 - **Frontend**: React (Vite), TypeScript, TailwindCSS  
 - **Backend**: FastAPI (Python), Uvicorn  
 - **AI & ML**: Google Gemini (evaluation & scoring)  
-- **OCR**: Microsoft Azure Cognitive Services (for handwritten text extraction)  
-- **Database**: PostgreSQL / MongoDB (optional depending on setup)  
+- **OCR**: Microsoft Azure Cognitive Services (for handwritten text extraction)   
 - **Deployment**: Render (backend), Vercel / Netlify (frontend)  
 
 ---
