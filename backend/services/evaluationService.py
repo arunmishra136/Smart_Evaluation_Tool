@@ -47,7 +47,7 @@ Student Answer:
 [Extracted student answer]
 
 Evaluation:
-Score: [Numeric score out of {{allocated_marks}}]
+Score: [Numeric score/{{allocated_marks}}]
 Suggestion: [Suggestions or 'None']
 
 If multi-part:
@@ -60,7 +60,7 @@ If multi-part:
    - Sub-question (b): ...
      *Note:* [If any sub-question was not attempted]
 
-Overall Score: [Total score out of Total Marks]
+Overall Score: [Total score/Total Marks]
 Suggestion: [General feedback]
 ===END===
 """

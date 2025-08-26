@@ -150,68 +150,66 @@ const EvaluationTool: React.FC = () => {
     return data.data;
   };
 
-  // --- Parsing Logic (supports multi-part questions) ---
-  const parseExtractedInfo = (text: string): ParsedQuestion[] => {
-    const out: ParsedQuestion[] = [];
+  // --- Parsing Logic (supports single- or multi-part questions) ---
+const parseExtractedInfo = (text: string): ParsedQuestion[] => {
+  const out: ParsedQuestion[] = [];
 
-    // Normalize whitespace a bit
-    const normalized = text.replace(/\r\n?/g, '\n');
+  // Normalize newlines
+  const normalized = text.replace(/\r\n?/g, '\n');
 
-    // Split on each Question header
-    const blocks = normalized.split(/(?=Question\s+\d+\s*\(Marks:\s*[0-9]+(?:\.[0-9]+)?\)\s*::)/i);
+  // Split on each Question header
+  const blocks = normalized.split(/(?=Question\s+\d+\s*\(Marks:\s*[0-9]+(?:\.[0-9]+)?\)\s*::)/i);
 
-    for (const rawBlock of blocks) {
-      const headerMatch = rawBlock.match(/Question\s+(\d+)\s*\(Marks:\s*([0-9]+(?:\.[0-9]+)?)\)\s*::/i);
-      if (!headerMatch) continue;
+  for (const rawBlock of blocks) {
+    const headerMatch = rawBlock.match(/Question\s+(\d+)\s*\(Marks:\s*([0-9]+(?:\.[0-9]+)?)\)\s*::/i);
+    if (!headerMatch) continue;
 
-      const questionNumber = parseInt(headerMatch[1], 10);
-      const marksTotalFromHeader = parseFloat(headerMatch[2]);
+    const questionNumber = parseInt(headerMatch[1], 10);
+    const marksTotalFromHeader = parseFloat(headerMatch[2]);
 
-      // Extract prompt
-      let prompt = '';
-      const promptMatch = rawBlock.match(/::\s*([\s\S]*?)\n\s*Student\s*Answer:/i);
-      if (promptMatch) prompt = promptMatch[1].trim();
+    // Prompt
+    let prompt = '';
+    const promptMatch = rawBlock.match(/::\s*([\s\S]*?)\n\s*Student\s*Answer:/i);
+    if (promptMatch) prompt = promptMatch[1].trim();
 
-      // Extract overall student's answer before the Evaluation section
-      let overallStudentAnswer = '';
-      const overallAnsMatch = rawBlock.match(/Student\s*Answer:\s*([\s\S]*?)\n\s*Evaluation:/i);
-      if (overallAnsMatch) overallStudentAnswer = overallAnsMatch[1].trim();
+    // Overall student's answer (block level)
+    let overallStudentAnswer = '';
+    const overallAnsMatch = rawBlock.match(/Student\s*Answer:\s*([\s\S]*?)\n\s*Evaluation\s*:/i);
+    if (overallAnsMatch) overallStudentAnswer = overallAnsMatch[1].trim();
 
-      // Locate Evaluation section bounds
-      const evalStartIdx = rawBlock.search(/\n\s*Evaluation:/i);
-      let evalSection = '';
-      if (evalStartIdx !== -1) {
-        const afterEval = rawBlock.slice(evalStartIdx + 1); // +1 to move past the preceding newline
-        // Cut off at Overall Score or Suggestion or end
-        const overallIdx = afterEval.search(/\n\s*Overall\s*Score:/i);
-        const suggestionIdx = afterEval.search(/\n\s*Suggestion:/i);
-        let endRel = afterEval.length;
-        if (overallIdx !== -1) endRel = Math.min(endRel, overallIdx);
-        if (suggestionIdx !== -1) endRel = Math.min(endRel, suggestionIdx);
-        evalSection = afterEval.slice(0, endRel);
-      }
+    // Evaluation section for this block only (stop before Overall Score/Suggestion)
+    let evalSection = '';
+    const evalStartIdx = rawBlock.search(/\n\s*Evaluation\s*:/i);
+    if (evalStartIdx !== -1) {
+      const afterEval = rawBlock.slice(evalStartIdx).replace(/^\n?/, ''); // include "Evaluation:" line
+      const overallIdx = afterEval.search(/\n\s*Overall\s*Score\s*:/i);
+      const suggestionIdx = afterEval.search(/\n\s*Suggestion\s*:/i);
+      let endRel = afterEval.length;
+      if (overallIdx !== -1) endRel = Math.min(endRel, overallIdx);
+      if (suggestionIdx !== -1) endRel = Math.min(endRel, suggestionIdx);
+      evalSection = afterEval.slice(0, endRel);
+    }
 
-      // Parse subparts from evalSection. Each subpart begins with a line like:
-      // *   *Definition ... (Allocated: 1 mark):
-      const subparts: SubQuestion[] = [];
-      const headerRe = /(^[ \t]\\s*\\s(.+?)\s*\(Allocated:\s*([0-9]+(?:\.[0-9]+)?)\s*mark[s]?\)\s*:\s*$)/gim;
+    // Try multi-part headers first (if your AI ever emits them)
+    const subparts: SubQuestion[] = [];
+    const headerRe = /(^[ \t]*[*-]\s*(.+?)\s*\(Allocated:\s*([0-9]+(?:\.[0-9]+)?)\s*mark[s]?\)\s*:\s*$)/gim;
 
-      // Gather header indexes first
-      const headers: { idx: number; full: string; title: string; allocated: number }[] = [];
-      let hm: RegExpExecArray | null;
-      while ((hm = headerRe.exec(evalSection)) !== null) {
-        headers.push({ idx: hm.index, full: hm[1], title: hm[2].trim(), allocated: parseFloat(hm[3]) });
-      }
+    const headers: { idx: number; full: string; title: string; allocated: number }[] = [];
+    let hm: RegExpExecArray | null;
+    while ((hm = headerRe.exec(evalSection)) !== null) {
+      headers.push({ idx: hm.index, full: hm[1], title: hm[2].trim(), allocated: parseFloat(hm[3]) });
+    }
 
+    if (headers.length > 0) {
+      // Multi-part parsing
       for (let i = 0; i < headers.length; i++) {
         const start = headers[i].idx + headers[i].full.length;
         const end = i + 1 < headers.length ? headers[i + 1].idx : evalSection.length;
         const chunk = evalSection.slice(start, end);
 
-        // Extract Student Answer, Evaluation, Score within this chunk
-        const saMatch = chunk.match(/Student\s*Answer:\s*([\s\S]?)\n\s*Evaluation\s:/i);
-        const evMatch = chunk.match(/Evaluation\s*:\s*([\s\S]?)\n\s*Score\s:/i);
-        const scMatch = chunk.match(/Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)/i);
+        const saMatch = chunk.match(/Student\s*Answer\s*:\s*([\s\S]*?)\n\s*Evaluation\s*:/i);
+        const evMatch = chunk.match(/Evaluation\s*:\s*([\s\S]*?)\n\s*Score\s*:/i);
+        const scMatch = chunk.match(/Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*(?:\/|out of)\s*([0-9]+(?:\.[0-9]+)?)/i);
 
         const studentAnswer = (saMatch ? saMatch[1] : '').trim().replace(/^"|"$/g, '');
         const evaluation = (evMatch ? evMatch[1] : '').trim();
@@ -227,53 +225,72 @@ const EvaluationTool: React.FC = () => {
           total,
         });
       }
+    } else {
+      // Single-part fallback: parse the block's Evaluation section directly
+      const saMatch = rawBlock.match(/Student\s*Answer\s*:\s*([\s\S]*?)\n\s*Evaluation\s*:/i);
+      const evMatch = evalSection.match(/Evaluation\s*:\s*([\s\S]*?)(?:\n\s*Score\s*:|$)/i);
+      const scMatch = evalSection.match(/Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*(?:\/|out of)\s*([0-9]+(?:\.[0-9]+)?)/i);
 
-      // Overall score & suggestion
-      const overallMatch = rawBlock.match(/Overall\s*Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*([0-9]+(?:\.[0-9]+)?)/i);
-      const suggestionMatch = rawBlock.match(/Suggestion\s*:\s*([\s\S]*?)$/i);
-
-      const overallObtained = overallMatch
-        ? parseFloat(overallMatch[1])
-        : subparts.reduce((s, p) => s + (isFinite(p.obtained) ? p.obtained : 0), 0);
-
-      const overallTotal = overallMatch
-        ? parseFloat(overallMatch[2])
-        : (isFinite(marksTotalFromHeader) ? marksTotalFromHeader : subparts.reduce((s, p) => s + (isFinite(p.total) ? p.total : 0), 0));
-
-      const overallSuggestion = suggestionMatch ? suggestionMatch[1].trim() : null;
-
-      const attempted = overallObtained > 0 || subparts.some(p => p.obtained > 0) || !!overallStudentAnswer;
-
-      out.push({
-        questionNumber,
-        marksTotal: marksTotalFromHeader,
-        prompt,
-        overallStudentAnswer,
-        subparts,
-        overallObtained,
-        overallTotal,
-        overallSuggestion,
-        attempted,
+      subparts.push({
+        title: 'Overall',
+        allocated: scMatch ? parseFloat(scMatch[2]) : (isFinite(marksTotalFromHeader) ? marksTotalFromHeader : 0),
+        studentAnswer: (saMatch ? saMatch[1] : overallStudentAnswer).trim(),
+        evaluation: (evMatch ? evMatch[1] : '').trim(),
+        obtained: scMatch ? parseFloat(scMatch[1]) : 0,
+        total: scMatch ? parseFloat(scMatch[2]) : (isFinite(marksTotalFromHeader) ? marksTotalFromHeader : 0),
       });
     }
 
-    return out;
-  };
+    // Per-question totals/obtained: from subparts or header, NOT from global "Overall Score"
+    const overallObtained = subparts.reduce((s, p) => s + (isFinite(p.obtained) ? p.obtained : 0), 0);
+    const overallTotal =
+      isFinite(marksTotalFromHeader)
+        ? marksTotalFromHeader
+        : subparts.reduce((s, p) => s + (isFinite(p.total) ? p.total : 0), 0);
+
+    // Suggestion (block-level, if present)
+    const suggestionMatch = rawBlock.match(/Suggestion\s*:\s*([\s\S]*?)$/i);
+    const overallSuggestion = suggestionMatch ? suggestionMatch[1].trim() : null;
+
+    const attempted = overallObtained > 0 || subparts.some(p => p.obtained > 0) || !!overallStudentAnswer;
+
+    out.push({
+      questionNumber,
+      marksTotal: marksTotalFromHeader,
+      prompt,
+      overallStudentAnswer,
+      subparts,
+      overallObtained,
+      overallTotal,
+      overallSuggestion,
+      attempted,
+    });
+  }
+
+  return out;
+};
+
 
   // --- Effects ---
   useEffect(() => {
-    if (reportCard && reportCard.text_response) {
-      const parsed = parseExtractedInfo(reportCard.text_response);
-      setParsedQuestions(parsed);
-    }
-  }, [reportCard]);
+  if (reportCard && reportCard.text_response) {
+    const parsed = parseExtractedInfo(reportCard.text_response);
+    // shallow compare before setting
+    setParsedQuestions(prev => {
+      return JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed;
+    });
+  }
+}, [reportCard]);
+
 
   useEffect(() => {
-    const sumObtained = parsedQuestions.reduce((acc, q) => acc + (isFinite(q.overallObtained) ? q.overallObtained : 0), 0);
-    const sumPossible = parsedQuestions.reduce((acc, q) => acc + (isFinite(q.overallTotal) ? q.overallTotal : (isFinite(q.marksTotal) ? q.marksTotal : 0)), 0);
-    setTotalObtained(sumObtained);
-    setTotalPossible(sumPossible);
-  }, [parsedQuestions]);
+  const sumObtained = parsedQuestions.reduce((acc, q) => acc + (isFinite(q.overallObtained) ? q.overallObtained : 0), 0);
+  const sumPossible = parsedQuestions.reduce((acc, q) => acc + (isFinite(q.overallTotal) ? q.overallTotal : (isFinite(q.marksTotal) ? q.marksTotal : 0)), 0);
+
+  setTotalObtained(prev => prev === sumObtained ? prev : sumObtained);
+  setTotalPossible(prev => prev === sumPossible ? prev : sumPossible);
+}, [parsedQuestions]);
+
 
   // --- PDF Download ---
   const handleDownload = () => {

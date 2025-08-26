@@ -12,7 +12,10 @@ app = FastAPI(docs_url="/docs", redoc_url="/redoc")
 # CORS settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # not recommended for production
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:8000",
+        ],  # not recommended for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
