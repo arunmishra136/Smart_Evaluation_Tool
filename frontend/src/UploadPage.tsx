@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './EvaluationTool.css'
 // Resolved the import error by using a CDN link for the ES module.
-import { PDFDocument } from 'https://cdn.skypack.dev/pdf-lib';
+import { PDFDocument } from "pdf-lib";
 import ReactMarkdown from 'react-markdown';
 // Resolved the import error by using a CDN link for the ES module.
-import { jsPDF } from 'https://cdn.skypack.dev/jspdf';
+import jsPDF from "jspdf";
 import Loader from "./Loader";
 
 // --- Constants ---
@@ -43,13 +43,6 @@ interface ParsedQuestion {
   overallSuggestion: string | null; // from "Suggestion:"
   attempted: boolean;
 }
-
-// --- Mock Component for Loading ---
-const LoadingEvaluation = () => (
-  <div style={{ textAlign: 'center', padding: '20px' }}>
-    <p>Loading...</p>
-  </div>
-);
 
 const EvaluationTool: React.FC = () => {
   // --- Component State ---
