@@ -14,8 +14,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://smart-evaluation-tool-rcpu.onrender.com",
+        "https://smart-evaluation-tool-rcpu.onrender.com",       #backend
         "http://127.0.0.1:8000",
+        "https://smartevaluationtool.netlify.app/",     #frontend deployed link
         ],  # not recommended for production
     allow_credentials=True,
     allow_methods=["*"],
