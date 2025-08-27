@@ -14,6 +14,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://smart-evaluation-tool-rcpu.onrender.com",
         "http://127.0.0.1:8000",
         ],  # not recommended for production
     allow_credentials=True,
