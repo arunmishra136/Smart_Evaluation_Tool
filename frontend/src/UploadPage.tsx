@@ -133,7 +133,7 @@ const EvaluationTool: React.FC = () => {
 
   const sendToBackend = async (pdfUrl: string): Promise<ReportCardData> => {
     const payload = { pdf_url: pdfUrl };
-    const response = await fetch(`http://127.0.0.1:8000/evaluation/evaluate-exam`, {
+    const response = await fetch(`https://smart-evaluation-tool-rcpu.onrender.com/evaluation/evaluate-exam`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
